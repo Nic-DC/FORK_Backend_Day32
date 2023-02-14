@@ -130,4 +130,29 @@ describe(`M5-Day32-Homework ---> API testing: `, () => {
     const response = await client.delete(`/products/123456789012345678901234`).expect(404);
     expect(response.body.message).toBe("Product not found");
   });
+
+  it("Should test that a product is updated with a PUT request", async () => {
+    const newProduct = { name: "New Product", description: "A new product", price: 10 };
+    const product = await ProductsModel.create(newProduct);
+
+    const updatedProduct = { name: "Updated Product", description: "An updated product", price: 20 };
+    const response = await client.put(`/products/${product._id}`).send(updatedProduct);
+
+    expect(response.status).toBe(200);
+    expect(typeof response.body.name).toBe("string");
+    expect(response.body.name).toBe("Updated Product");
+
+    const updated = await ProductsModel.findById(product._id);
+    expect(updated.name).toBe("Updated Product");
+  });
+
+  it("Should test that 404 is returned with a non-existing id", async () => {
+    const newProduct = { name: "New Product", description: "A new product", price: 10 };
+    const product = await ProductsModel.create(newProduct);
+
+    const updatedProduct = { name: "Updated Product", description: "An updated product", price: 20 };
+    const response = await client.put(`/products/${product._id}1`).send(updatedProduct);
+
+    expect(response.status).toBe(404);
+  });
 });
