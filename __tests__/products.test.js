@@ -37,6 +37,13 @@ const notValidProduct = {
   price: 100,
 };
 
+const product = new ProductsModel({
+  name: "Product 1",
+  description: "This is a valid product",
+  price: 10,
+});
+await product.save();
+
 beforeAll(async () => {
   await mongoose.connect(process.env.MONGO_URL_TEST);
   const product = new ProductsModel({ name: "test", description: "blalblabla", price: 20 });
@@ -77,26 +84,50 @@ describe(`M5-Day32-Homework ---> API testing: `, () => {
     console.log("response.body: ", response.body);
     expect(response.status).toBe(200);
     expect(response.body).toEqual(expect.any(Array));
-
     const product = response.body[0];
     expect(product).toHaveProperty("_id");
     expect(product).toHaveProperty("name");
     expect(product).toHaveProperty("description");
     expect(product).toHaveProperty("price");
   });
-
   it(`Should return a valid _id and 201 in case of a valid product, 400 if not`, async () => {
     const validResponse = await client.post("/products").send(validProduct);
     expect(validResponse.status).toBe(201);
     // it expects a string as an _id
     expect(validResponse.body).toHaveProperty("_id", expect.any(String));
-
     const notValidResponse = await client.post("/products").send(notValidProduct);
     expect(notValidResponse.status).toBe(400);
   });
+  it(`For the /products/:id endpoint:`, async () => {
+    const responseInvalid = await client.get("/products/123456123456123456123456");
+    expect(responseInvalid.status).toBe(404);
+    // Test with a valid ID
+    const responseValid = await client.get(`/products/${product._id}`);
+    expect(responseValid.status).toBe(200);
+    expect(responseValid.body).toHaveProperty("_id", product._id.toString());
+    expect(responseValid.body).toHaveProperty("name", product.name);
+    expect(responseValid.body).toHaveProperty("description", product.description);
+    expect(responseValid.body).toHaveProperty("price", product.price);
+  }, 30000);
 
-  it(`Should:
-            1. expect requests to be 404 with a non-existing id, like 123456123456123456123456. 
-            Use a 24 character ID or casting to ObjectID will fail
-            2. expect requests to return the correct product with a valid id`);
+  it("should delete a product by ID", async () => {
+    // Create a new product and save it to the database
+    const newProduct = new ProductsModel({
+      name: "Test Product",
+      description: "A test product",
+      price: 10.99,
+    });
+    const savedProduct = await newProduct.save();
+
+    const response = await client.delete(`/products/${savedProduct._id}`).expect(204);
+
+    // make sure the product was deleted from the database
+    const deletedProduct = await ProductsModel.findById(savedProduct._id);
+    expect(deletedProduct).toBeNull();
+  });
+
+  it("should return 404 for non-existing product ID", async () => {
+    const response = await client.delete(`/products/123456789012345678901234`).expect(404);
+    expect(response.body.message).toBe("Product not found");
+  });
 });
