@@ -63,6 +63,7 @@ productsRouter.put("/:id", async (req, res, next) => {
       res.status(200).send({ updatedProduct });
     }
   } catch (error) {
+    console.log("PUT /:id - ERROR ", error);
     next(error);
   }
 });

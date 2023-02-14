@@ -37,15 +37,10 @@ const notValidProduct = {
   price: 100,
 };
 
-const product = new ProductsModel({
-  name: "Product 1",
-  description: "This is a valid product",
-  price: 10,
-});
-await product.save();
-
 beforeAll(async () => {
-  await mongoose.connect(process.env.MONGO_URL_TEST);
+  // { bufferCommands: false }
+  // disable buffering of database commands and allow Mongoose to wait indefinitely for database operations to complete
+  await mongoose.connect(process.env.MONGO_URL_TEST, { bufferCommands: false });
   const product = new ProductsModel({ name: "test", description: "blalblabla", price: 20 });
   await product.save();
 });
@@ -90,6 +85,7 @@ describe(`M5-Day32-Homework ---> API testing: `, () => {
     expect(product).toHaveProperty("description");
     expect(product).toHaveProperty("price");
   });
+
   it(`Should return a valid _id and 201 in case of a valid product, 400 if not`, async () => {
     const validResponse = await client.post("/products").send(validProduct);
     expect(validResponse.status).toBe(201);
@@ -98,10 +94,17 @@ describe(`M5-Day32-Homework ---> API testing: `, () => {
     const notValidResponse = await client.post("/products").send(notValidProduct);
     expect(notValidResponse.status).toBe(400);
   });
+
   it(`For the /products/:id endpoint:`, async () => {
+    const product = new ProductsModel({
+      name: "Product 1",
+      description: "This is a valid product",
+      price: 10,
+    });
+    await product.save();
     const responseInvalid = await client.get("/products/123456123456123456123456");
     expect(responseInvalid.status).toBe(404);
-    // Test with a valid ID
+    // test with a valid ID
     const responseValid = await client.get(`/products/${product._id}`);
     expect(responseValid.status).toBe(200);
     expect(responseValid.body).toHaveProperty("_id", product._id.toString());
@@ -111,7 +114,6 @@ describe(`M5-Day32-Homework ---> API testing: `, () => {
   }, 30000);
 
   it("should delete a product by ID", async () => {
-    // Create a new product and save it to the database
     const newProduct = new ProductsModel({
       name: "Test Product",
       description: "A test product",
@@ -137,21 +139,24 @@ describe(`M5-Day32-Homework ---> API testing: `, () => {
 
     const updatedProduct = { name: "Updated Product", description: "An updated product", price: 20 };
     const response = await client.put(`/products/${product._id}`).send(updatedProduct);
+    console.log("response: ", response.body.updatedProduct.name);
 
     expect(response.status).toBe(200);
-    expect(typeof response.body.name).toBe("string");
-    expect(response.body.name).toBe("Updated Product");
+    expect(typeof response.body.updatedProduct.name).toBe("string");
+    expect(response.body.updatedProduct.name).toEqual("Updated Product");
 
     const updated = await ProductsModel.findById(product._id);
-    expect(updated.name).toBe("Updated Product");
+    expect(updated.name).toEqual("Updated Product");
   });
 
   it("Should test that 404 is returned with a non-existing id", async () => {
     const newProduct = { name: "New Product", description: "A new product", price: 10 };
     const product = await ProductsModel.create(newProduct);
 
+    const id = "63e3ac07a99a7276c6a60795";
+
     const updatedProduct = { name: "Updated Product", description: "An updated product", price: 20 };
-    const response = await client.put(`/products/${product._id}1`).send(updatedProduct);
+    const response = await client.put(`/products/${id}`).send(updatedProduct);
 
     expect(response.status).toBe(404);
   });
